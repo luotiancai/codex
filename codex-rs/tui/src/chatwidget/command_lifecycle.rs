@@ -35,6 +35,11 @@ impl ChatWidget {
             return;
         };
         let (_command, parsed_cmd) = command_execution_command_and_parsed(command, command_actions);
+        if !render_source.is_replay() && *source != ExecCommandSource::UnifiedExecInteraction {
+            self.footer_command_status
+                .start(id, command, Some(Instant::now()));
+            self.refresh_footer_command_status();
+        }
         self.flush_answer_stream_with_separator();
         if is_unified_exec_source(*source) {
             if *source == ExecCommandSource::UnifiedExecStartup && !render_source.is_replay() {
@@ -146,6 +151,8 @@ impl ChatWidget {
         else {
             return;
         };
+        self.footer_command_status.finish(id);
+        self.refresh_footer_command_status();
         if is_unified_exec_source(*source) {
             if let Some(process_id) = process_id.as_deref()
                 && self
@@ -197,6 +204,12 @@ impl ChatWidget {
 
     pub(super) fn clear_background_terminals(&mut self) {
         self.pending_terminal_restore = None;
+        self.footer_command_status.retain(|id| {
+            !self
+                .unified_exec_processes
+                .iter()
+                .any(|process| process.call_id == id)
+        });
         self.unified_exec_processes.clear();
         self.sync_unified_exec_footer();
     }
@@ -225,6 +238,8 @@ impl ChatWidget {
                     .iter()
                     .any(|process| process.key == terminal.process_id)
             {
+                self.footer_command_status
+                    .start(&terminal.item_id, &terminal.command, None);
                 self.unified_exec_processes.push(UnifiedExecProcessSummary {
                     key: terminal.process_id,
                     call_id: terminal.item_id,
@@ -260,6 +275,16 @@ impl ChatWidget {
             .map(|process| process.command_display.clone())
             .collect();
         self.bottom_pane.set_unified_exec_processes(processes);
+        self.refresh_footer_command_status();
+    }
+
+    pub(super) fn retain_footer_background_commands(&mut self) {
+        self.footer_command_status.retain(|id| {
+            self.unified_exec_processes
+                .iter()
+                .any(|process| process.call_id == id)
+        });
+        self.refresh_footer_command_status();
     }
 
     /// Record recent stdout/stderr lines for the unified exec footer.

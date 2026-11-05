@@ -208,6 +208,7 @@ impl ChatWidget {
         self.clear_safety_buffering();
         self.update_task_running_state();
         self.running_commands.clear();
+        self.retain_footer_background_commands();
         self.suppressed_exec_calls.clear();
         self.last_unified_wait = None;
         self.unified_exec_wait_streak = None;
@@ -374,6 +375,7 @@ impl ChatWidget {
         };
         self.update_task_running_state();
         self.running_commands.clear();
+        self.retain_footer_background_commands();
         self.suppressed_exec_calls.clear();
         self.last_unified_wait = None;
         self.unified_exec_wait_streak = None;

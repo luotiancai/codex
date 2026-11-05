@@ -11,6 +11,8 @@ If you want Codex in your code editor (VS Code, Cursor, Windsurf), <a href="http
 
 ## Quickstart
 
+This fork adds a [persistent command status in the bottom footer](./docs/footer-command-status.md), including elapsed time and the number of live commands.
+
 ### Installing and running Codex CLI
 
 Run the following on Mac or Linux to install Codex CLI:

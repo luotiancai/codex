@@ -159,6 +159,11 @@ where
         } else {
             style
         };
+        let style = if item == StatusLineItem::Status && text.starts_with("▶ ") {
+            style.bold()
+        } else {
+            style
+        };
         if item == StatusLineItem::PullRequestNumber {
             line.push_span(Span::styled(text, style.underlined()), pull_request_url);
         } else {

@@ -143,6 +143,8 @@ impl ChatWidget {
     }
 
     pub(crate) fn pause_unavailable_thread(&mut self) {
+        // A frozen/disconnected snapshot is not evidence of a live process.
+        self.footer_command_status.retain(|_| false);
         if let Some(questions) = &mut self.bottom_pane.questions {
             questions.delivery_enabled = false;
         }

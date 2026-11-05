@@ -210,7 +210,19 @@ impl ChatWidget {
         }
 
         let mut segments = Vec::new();
+        // Keep execution visible even when an existing custom footer omits run-state.
+        // Put it first so a narrow terminal cannot truncate the active command away.
+        let command_status = self.footer_command_status.summary(
+            Instant::now(),
+            /*background*/ !self.bottom_pane.is_task_running(),
+        );
+        if let Some(value) = &command_status {
+            segments.push((StatusLineItem::Status, value.clone()));
+        }
         for item in &selections.status_line_items {
+            if *item == StatusLineItem::Status && command_status.is_some() {
+                continue;
+            }
             if let Some(value) = self.status_line_value_for_item(*item) {
                 segments.push((*item, value));
             }
@@ -223,6 +235,16 @@ impl ChatWidget {
             self.status_line_pull_request_url(),
         );
         self.set_status_line(content);
+    }
+
+    /// Tick independently of output and animations, including idle background jobs.
+    pub(super) fn refresh_footer_command_status(&mut self) {
+        let selections = self.status_surface_selections();
+        self.refresh_status_line_from_selections(&selections);
+        if !selections.status_line_items.is_empty() && !self.footer_command_status.is_empty() {
+            self.frame_requester
+                .schedule_frame_in(Duration::from_secs(1));
+        }
     }
 
     pub(super) fn status_line_renderer(&self) -> StatusLineRenderer {

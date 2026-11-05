@@ -257,6 +257,7 @@ use crate::tui::FrameRequester;
 mod activity_groups;
 mod activity_presentation;
 mod command_lifecycle;
+mod command_status;
 mod config_panel;
 mod connector_mentions;
 mod connectors;
@@ -617,6 +618,7 @@ pub(crate) struct ChatWidget {
     suppress_image_paste_until: Instant,
     copy_last_response_binding: Vec<KeyBinding>,
     running_commands: HashMap<String, RunningCommand>,
+    footer_command_status: command_status::FooterCommandStatus,
     collab_agent_metadata: HashMap<ThreadId, AgentMetadata>,
     pending_collab_spawn_requests: HashMap<String, multi_agents::SpawnRequestSummary>,
     suppressed_exec_calls: HashSet<String>,
@@ -1214,6 +1216,9 @@ impl ChatWidget {
             self.refresh_terminal_title();
         }
         self.refresh_status_line_if_workspace_headline_due();
+        if !self.footer_command_status.is_empty() {
+            self.refresh_footer_command_status();
+        }
         self.refresh_thread_usage_if_settlement_due();
         self.refresh_terminal_program_status();
     }
