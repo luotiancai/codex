@@ -11,7 +11,7 @@ If you want Codex in your code editor (VS Code, Cursor, Windsurf), <a href="http
 
 ## Quickstart
 
-This fork adds [observable model/tool activity and persistent command status](./docs/footer-command-status.md), including silence timers and the number of live commands.
+This fork adds [a shell task manager and live model activity](./docs/footer-command-status.md), with per-script output and stop controls, phase timers, and streaming token estimates.
 
 ### Installing and running Codex CLI
 
