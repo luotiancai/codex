@@ -264,6 +264,7 @@ mod connectors;
 mod constructor;
 mod dynamic_activity;
 mod empty_state_policy;
+mod live_activity;
 pub(crate) use self::connectors::ConnectorScopeGeneration;
 use self::connectors::ConnectorsState;
 mod exec_state;
@@ -619,6 +620,7 @@ pub(crate) struct ChatWidget {
     copy_last_response_binding: Vec<KeyBinding>,
     running_commands: HashMap<String, RunningCommand>,
     footer_command_status: command_status::FooterCommandStatus,
+    live_activity: live_activity::LiveActivity,
     collab_agent_metadata: HashMap<ThreadId, AgentMetadata>,
     pending_collab_spawn_requests: HashMap<String, multi_agents::SpawnRequestSummary>,
     suppressed_exec_calls: HashSet<String>,
@@ -1216,6 +1218,7 @@ impl ChatWidget {
             self.refresh_terminal_title();
         }
         self.refresh_status_line_if_workspace_headline_due();
+        self.sync_live_activity();
         if !self.footer_command_status.is_empty() {
             self.refresh_footer_command_status();
         }

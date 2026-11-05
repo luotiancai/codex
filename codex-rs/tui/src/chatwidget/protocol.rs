@@ -43,6 +43,13 @@ impl ChatWidget {
         if !is_resume_initial_replay && !is_retry_error {
             self.restore_retry_status_header_if_present();
         }
+        if replay_kind.is_none() {
+            self.live_activity
+                .recover_reasoning_item(self.status_state.reasoning_item_id.as_deref());
+            if self.live_activity.observe(&notification, Instant::now()) {
+                self.request_redraw();
+            }
+        }
         match notification {
             ServerNotification::McpServerOauthLoginCompleted(notification) => {
                 if notification.success {

@@ -1803,9 +1803,7 @@ pub(super) async fn assert_hook_events(
         .expect("render hook activity status");
     let running = normalized_backend_snapshot(terminal.backend());
     assert!(
-        running
-            .lines()
-            .any(|line| line.contains("Working") && line.contains(status_message)),
+        running.contains("Running hook") && running.contains(status_message),
         "hook start should render its status in the activity row: {running}"
     );
 

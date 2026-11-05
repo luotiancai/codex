@@ -86,6 +86,7 @@ impl ChatWidget {
     // Raw reasoning uses the same flow as summarized reasoning
 
     pub(super) fn on_task_started(&mut self) {
+        self.live_activity = live_activity::LiveActivity::started(Instant::now());
         self.status_state.program_status_after_turn =
             crate::terminal_program_status::ProgramStatus::Idle;
         self.bottom_pane.dismiss_composer_sparkle();
@@ -129,6 +130,7 @@ impl ChatWidget {
 
     pub(super) fn on_replayed_task_started(&mut self, started_at: Option<i64>) {
         self.on_task_started();
+        self.live_activity = Default::default();
         if let Some(started_at) = started_at {
             let elapsed_secs = chrono::Utc::now().timestamp().saturating_sub(started_at);
             self.bottom_pane.reset_status_timer(Duration::from_secs(

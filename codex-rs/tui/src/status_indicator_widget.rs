@@ -51,12 +51,19 @@ pub(crate) enum StatusDetailsCapitalization {
     Preserve,
 }
 
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub(crate) struct LiveActivityStatus {
+    pub(crate) header: Option<String>,
+    pub(crate) last_data_at: Option<Instant>,
+}
+
 /// Displays a single-line in-progress status with optional wrapped details.
 #[derive(Clone, Debug)]
 pub(crate) struct StatusIndicatorWidget {
     /// Animated header text (defaults to "Working").
     header: String,
     header_started_at: Instant,
+    live_activity: Option<LiveActivityStatus>,
     details: Option<String>,
     details_max_lines: usize,
     /// Optional suffix rendered after the elapsed/interrupt segment.
@@ -99,6 +106,7 @@ impl StatusIndicatorWidget {
         Self {
             header: String::from("Working"),
             header_started_at: Instant::now(),
+            live_activity: None,
             details: None,
             details_max_lines: STATUS_DETAILS_DEFAULT_MAX_LINES,
             inline_message: None,
@@ -127,6 +135,22 @@ impl StatusIndicatorWidget {
             self.header = header;
             self.header_started_at = Instant::now();
         }
+    }
+
+    pub(crate) fn update_live_activity(&mut self, activity: Option<LiveActivityStatus>) -> bool {
+        if self.live_activity == activity {
+            return false;
+        }
+        if self
+            .live_activity
+            .as_ref()
+            .and_then(|state| state.header.as_ref())
+            != activity.as_ref().and_then(|state| state.header.as_ref())
+        {
+            self.header_started_at = Instant::now();
+        }
+        self.live_activity = activity;
+        true
     }
 
     /// Update the details text shown below the header.
@@ -233,6 +257,20 @@ impl StatusIndicator<'_> {
             |started_at| now.saturating_duration_since(started_at),
         );
         let pretty_elapsed = fmt_elapsed_compact(elapsed_duration.as_secs());
+        let data_age = row.live_activity.as_ref().map(|activity| {
+            activity.last_data_at.map_or_else(
+                || "no live data yet".to_string(),
+                |at| {
+                    format!(
+                        "no data {}",
+                        fmt_elapsed_compact(now.saturating_duration_since(at).as_secs())
+                    )
+                },
+            )
+        });
+        let elapsed_label = data_age.map_or(pretty_elapsed.clone(), |age| {
+            format!("total {pretty_elapsed} · {age}")
+        });
         let progress =
             MotionMode::from_animations_enabled(row.animations_enabled && row.effects.progress);
         let shimmer =
@@ -247,23 +285,40 @@ impl StatusIndicator<'_> {
             spans.push(indicator);
             spans.push(" ".into());
         }
-        spans.extend(summary_shimmer(
-            &row.header,
-            now.saturating_duration_since(row.header_started_at),
-            shimmer,
-        ));
-        if !spans.is_empty() {
-            spans.push(" ".into());
-        }
+        let mut suffix: Vec<Span<'static>> = Vec::new();
         if row.show_interrupt_hint
             && let Some(interrupt_binding) = row.interrupt_binding
         {
-            spans.push(format!("({pretty_elapsed} • ").dim());
-            spans.extend(interrupt_binding.spans());
-            spans.push(" to interrupt)".dim());
+            suffix.push(format!("({elapsed_label} • ").dim());
+            suffix.extend(interrupt_binding.spans());
+            suffix.push(" to interrupt)".dim());
         } else {
-            spans.push(format!("({pretty_elapsed})").dim());
+            suffix.push(format!("({elapsed_label})").dim());
         }
+        let heading = Line::from(summary_shimmer(
+            row.live_activity
+                .as_ref()
+                .and_then(|activity| activity.header.as_deref())
+                .unwrap_or(&row.header),
+            now.saturating_duration_since(row.header_started_at),
+            shimmer,
+        ));
+        let heading = if row.live_activity.is_some() {
+            let reserved = line_width(&Line::from(spans.clone()))
+                + line_width(&Line::from(suffix.clone()))
+                + 1;
+            truncate_line_with_ellipsis_if_overflow(
+                heading,
+                usize::from(width).saturating_sub(reserved),
+            )
+        } else {
+            heading
+        };
+        spans.extend(heading.spans);
+        if !spans.is_empty() {
+            spans.push(" ".into());
+        }
+        spans.extend(suffix);
         if let Some(message) = &row.inline_message {
             // Keep optional context after elapsed/interrupt text so that core
             // interrupt affordances stay in a fixed visual location.
@@ -305,7 +360,10 @@ impl Renderable for StatusIndicator<'_> {
         if area.is_empty() {
             return;
         }
-        if self.row.animations_enabled || self.timer.display_started_at.is_some() {
+        if self.row.animations_enabled
+            || self.timer.display_started_at.is_some()
+            || self.row.live_activity.is_some()
+        {
             let interval_ms = if self.row.animations_enabled
                 && (self.row.effects.progress || self.row.effects.shimmer)
             {
@@ -361,6 +419,48 @@ mod tests {
         assert_eq!(fmt_elapsed_compact(/*elapsed_secs*/ 3600), "1h 00m 00s");
         assert_eq!(fmt_elapsed_compact(3600 + 60 + 1), "1h 01m 01s");
         assert_eq!(fmt_elapsed_compact(25 * 3600 + 2 * 60 + 3), "25h 02m 03s");
+    }
+
+    #[test]
+    fn live_activity_long_command_keeps_silence_and_interrupt_visible() {
+        let (tx, _rx) = unbounded_channel();
+        let mut row = StatusIndicatorWidget::new(
+            AppEventSender::new(tx),
+            FrameRequester::test_dummy(),
+            false,
+            Default::default(),
+        );
+        row.update_live_activity(Some(LiveActivityStatus {
+            header: Some(format!("Running python3 {}", "long_script_name".repeat(8))),
+            last_data_at: Some(Instant::now() - Duration::from_secs(30)),
+        }));
+        let timer = StatusTimer::default();
+        let mut terminal = Terminal::new(TestBackend::new(80, 1)).expect("terminal");
+        terminal
+            .draw(|frame| {
+                row.with_timer(&timer)
+                    .render(frame.area(), frame.buffer_mut())
+            })
+            .expect("draw");
+        let visible: String = (0..80)
+            .map(|x| terminal.backend().buffer()[(x, 0)].symbol())
+            .collect();
+        assert!(visible.contains("Running python3"));
+        assert!(visible.contains("no data 30s"));
+        assert!(visible.contains("esc to interrupt"));
+        insta::assert_snapshot!("live_activity_long_command", visible.trim_end());
+        row.update_live_activity(None);
+        terminal
+            .draw(|frame| {
+                row.with_timer(&timer)
+                    .render(frame.area(), frame.buffer_mut())
+            })
+            .expect("draw restored header");
+        let restored: String = (0..80)
+            .map(|x| terminal.backend().buffer()[(x, 0)].symbol())
+            .collect();
+        assert!(restored.contains("Working"));
+        assert!(!restored.contains("no data"));
     }
 
     #[test]

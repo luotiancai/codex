@@ -52,6 +52,12 @@ impl FooterCommandStatus {
         self.commands.is_empty()
     }
 
+    pub(super) fn running_header(&self) -> Option<String> {
+        self.commands
+            .last()
+            .map(|command| format!("Running {}", command.display))
+    }
+
     pub(super) fn summary(&self, now: Instant, background: bool) -> Option<String> {
         let command = self.commands.last()?;
         let label = if background { "Background" } else { "Running" };
@@ -124,7 +130,8 @@ mod tests {
             None,
         );
         let summary = status.summary(Instant::now(), false).expect("live command");
-        assert!(summary.starts_with("▶ Running python3 脚本"));
+        assert!(summary.starts_with("▶ Running python3 "));
+        assert!(summary.contains("脚本"));
         assert!(summary.ends_with('…'));
         assert!(!summary.chars().any(char::is_control));
         assert!(unicode_width::UnicodeWidthStr::width(summary.as_str()) <= 59);

@@ -723,6 +723,17 @@ impl BottomPane {
         self.status.as_ref()
     }
 
+    pub(crate) fn set_live_activity(
+        &mut self,
+        activity: Option<crate::status_indicator_widget::LiveActivityStatus>,
+    ) {
+        if let Some(status) = self.status.as_mut()
+            && status.update_live_activity(activity)
+        {
+            self.request_redraw();
+        }
+    }
+
     pub(crate) fn status_elapsed(&self) -> Option<Duration> {
         self.is_task_running
             .then(|| self.status_timer.elapsed_at(Instant::now()))

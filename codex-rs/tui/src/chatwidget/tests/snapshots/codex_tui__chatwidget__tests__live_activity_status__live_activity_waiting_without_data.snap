@@ -1,0 +1,6 @@
+---
+source: tui/src/chatwidget/tests/live_activity_status.rs
+assertion_line: 67
+expression: visible
+---
+• Waiting for response (total 0s · no data 30s • esc to interrupt)

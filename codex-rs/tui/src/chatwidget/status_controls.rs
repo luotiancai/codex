@@ -9,6 +9,56 @@ use crate::bottom_pane::footer_content::FooterContent;
 use crate::status::thread_cost_micros;
 
 impl ChatWidget {
+    /// Compose the live phase with authoritative retry/compaction/approval status.
+    pub(super) fn sync_live_activity(&mut self) {
+        if !self.turn_lifecycle.agent_turn_running {
+            self.bottom_pane.set_live_activity(None);
+            return;
+        }
+        let now = Instant::now();
+        let preserve_header = self.status_state.retry_status_header.is_some()
+            || self.status_state.compaction.is_some()
+            || !self.status_state.pending_guardian_review_status.is_empty()
+            || self.safety_buffering_is_waiting()
+            || (self.mcp_startup_status.is_some() && self.status_header_is_mcp_startup_owned());
+        let header = (!preserve_header).then(|| {
+            let activity = self.live_activity.header(now);
+            if activity != "Running command" && activity != "Waiting for response" {
+                return activity;
+            }
+            self.footer_command_status
+                .running_header()
+                .unwrap_or_else(|| {
+                    if self
+                        .active_hook_cell
+                        .as_ref()
+                        .and_then(HookCell::running_status_summary)
+                        .is_some()
+                    {
+                        "Running hook".into()
+                    } else {
+                        activity
+                    }
+                })
+        });
+        // A silent answer stream must not hide the waiting indicator indefinitely.
+        if self
+            .live_activity
+            .last_data_at
+            .is_none_or(|at| now.saturating_duration_since(at) >= Duration::from_secs(5))
+        {
+            self.bottom_pane.ensure_status_indicator();
+        }
+        self.bottom_pane.set_live_activity(Some(
+            crate::status_indicator_widget::LiveActivityStatus {
+                header,
+                last_data_at: self.live_activity.last_data_at,
+            },
+        ));
+        self.frame_requester
+            .schedule_frame_in(Duration::from_secs(1));
+    }
+
     /// Update the status indicator header and details.
     ///
     /// Passing `None` clears any existing details. Returns whether the visible status indicator

@@ -195,6 +195,7 @@ impl ChatWidget {
             copy_last_response_binding,
             running_commands: HashMap::new(),
             footer_command_status: Default::default(),
+            live_activity: Default::default(),
             collab_agent_metadata: HashMap::new(),
             pending_collab_spawn_requests: HashMap::new(),
             suppressed_exec_calls: HashSet::new(),

@@ -15,6 +15,7 @@ async fn footer_command_status_shows_unknown_scripts_in_existing_custom_footer()
     chat.on_task_started();
     let before = status_line_text(&chat);
     let item = begin_unified_exec_startup(&mut chat, "script", "42", "python3 test.py");
+    chat.pre_draw_tick();
     let text = status_line_text(&chat).expect("custom footer");
     assert!(text.starts_with("▶ Running python3 test.py · 0s · "));
 

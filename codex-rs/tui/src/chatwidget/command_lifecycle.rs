@@ -418,6 +418,9 @@ impl ChatWidget {
         else {
             return;
         };
+        self.footer_command_status.finish(&id);
+        self.live_activity.finish_tool(&id);
+        self.refresh_footer_command_status();
         let event_command = split_command_string(&command);
         let event_parsed = command_actions
             .into_iter()

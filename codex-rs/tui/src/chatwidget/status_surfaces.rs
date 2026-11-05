@@ -209,13 +209,28 @@ impl ChatWidget {
             return;
         }
 
-        let mut segments = Vec::new();
         // Keep execution visible even when an existing custom footer omits run-state.
         // Put it first so a narrow terminal cannot truncate the active command away.
         let command_status = self.footer_command_status.summary(
             Instant::now(),
             /*background*/ !self.bottom_pane.is_task_running(),
         );
+        let segments = self.status_line_segments(&selections, command_status);
+        let content = self.status_line_renderer().content(
+            segments,
+            self.local_settings.tui.status_line_use_colors,
+            self.thread_id,
+            self.status_line_pull_request_url(),
+        );
+        self.set_status_line(content);
+    }
+
+    fn status_line_segments(
+        &mut self,
+        selections: &StatusSurfaceSelections,
+        command_status: Option<String>,
+    ) -> Vec<(StatusLineItem, String)> {
+        let mut segments = Vec::new();
         if let Some(value) = &command_status {
             segments.push((StatusLineItem::Status, value.clone()));
         }
@@ -228,13 +243,19 @@ impl ChatWidget {
             }
         }
 
-        let content = self.status_line_renderer().content(
-            segments,
-            self.local_settings.tui.status_line_use_colors,
-            self.thread_id,
-            self.status_line_pull_request_url(),
-        );
-        self.set_status_line(content);
+        segments
+    }
+
+    /// A parked pane retains a static footer; do not freeze a live command into it.
+    pub(super) fn inactive_status_line_text(&mut self) -> Option<String> {
+        let selections = self.status_surface_selections();
+        let text = self
+            .status_line_segments(&selections, None)
+            .into_iter()
+            .map(|(_, text)| text)
+            .collect::<Vec<_>>()
+            .join(crate::bottom_pane::STATUS_LINE_SEPARATOR);
+        (!text.is_empty()).then_some(text)
     }
 
     /// Tick independently of output and animations, including idle background jobs.

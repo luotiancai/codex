@@ -61,6 +61,7 @@ impl ChatWidget {
         self.flush_completed_hook_output();
         self.finish_active_hook_cell_if_idle();
         self.sync_hook_status_message();
+        self.sync_live_activity();
         self.request_redraw();
     }
 
