@@ -52,9 +52,16 @@ pub(crate) enum StatusDetailsCapitalization {
 }
 
 #[derive(Clone, Debug, PartialEq, Eq)]
+pub(crate) struct LiveTokenCount {
+    pub(crate) count: u64,
+    pub(crate) estimated: bool,
+}
+
+#[derive(Clone, Debug, PartialEq, Eq)]
 pub(crate) struct LiveActivityStatus {
     pub(crate) header: Option<String>,
-    pub(crate) last_data_at: Option<Instant>,
+    pub(crate) phase_started_at: Option<Instant>,
+    pub(crate) tokens: Option<LiveTokenCount>,
 }
 
 /// Displays a single-line in-progress status with optional wrapped details.
@@ -256,21 +263,27 @@ impl StatusIndicator<'_> {
             || self.timer.elapsed_at(now),
             |started_at| now.saturating_duration_since(started_at),
         );
-        let pretty_elapsed = fmt_elapsed_compact(elapsed_duration.as_secs());
-        let data_age = row.live_activity.as_ref().map(|activity| {
-            activity.last_data_at.map_or_else(
-                || "no live data yet".to_string(),
-                |at| {
+        let elapsed_label = if let Some(activity) = &row.live_activity {
+            let elapsed = fmt_elapsed_compact(
+                now.saturating_duration_since(
+                    activity.phase_started_at.unwrap_or(row.header_started_at),
+                )
+                .as_secs(),
+            );
+            let tokens = activity.tokens.as_ref().map_or_else(
+                || "↓ — tokens".into(),
+                |tokens| {
                     format!(
-                        "no data {}",
-                        fmt_elapsed_compact(now.saturating_duration_since(at).as_secs())
+                        "↓ {}{} tokens",
+                        if tokens.estimated { "~" } else { "" },
+                        tokens.count
                     )
                 },
-            )
-        });
-        let elapsed_label = data_age.map_or(pretty_elapsed.clone(), |age| {
-            format!("total {pretty_elapsed} · {age}")
-        });
+            );
+            format!("{elapsed} · {tokens}")
+        } else {
+            fmt_elapsed_compact(elapsed_duration.as_secs())
+        };
         let progress =
             MotionMode::from_animations_enabled(row.animations_enabled && row.effects.progress);
         let shimmer =
@@ -422,7 +435,7 @@ mod tests {
     }
 
     #[test]
-    fn live_activity_long_command_keeps_silence_and_interrupt_visible() {
+    fn live_activity_long_command_keeps_phase_tokens_and_interrupt_visible() {
         let (tx, _rx) = unbounded_channel();
         let mut row = StatusIndicatorWidget::new(
             AppEventSender::new(tx),
@@ -432,7 +445,11 @@ mod tests {
         );
         row.update_live_activity(Some(LiveActivityStatus {
             header: Some(format!("Running python3 {}", "long_script_name".repeat(8))),
-            last_data_at: Some(Instant::now() - Duration::from_secs(30)),
+            phase_started_at: Some(Instant::now() - Duration::from_secs(30)),
+            tokens: Some(LiveTokenCount {
+                count: 1234,
+                estimated: true,
+            }),
         }));
         let timer = StatusTimer::default();
         let mut terminal = Terminal::new(TestBackend::new(80, 1)).expect("terminal");
@@ -446,7 +463,7 @@ mod tests {
             .map(|x| terminal.backend().buffer()[(x, 0)].symbol())
             .collect();
         assert!(visible.contains("Running python3"));
-        assert!(visible.contains("no data 30s"));
+        assert!(visible.contains("30s · ↓ ~1234 tokens"));
         assert!(visible.contains("esc to interrupt"));
         insta::assert_snapshot!("live_activity_long_command", visible.trim_end());
         row.update_live_activity(None);

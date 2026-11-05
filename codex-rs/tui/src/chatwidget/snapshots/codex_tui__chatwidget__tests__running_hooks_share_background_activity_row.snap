@@ -5,19 +5,17 @@ expression: "format!(\"80 columns:\\n{}\\n120 columns:\\n{}\", hook_status_frame
 ---
 80 columns:
 "                                                                                "
-"• Running sleep 2 (total 0s · no data 0s • esc to interrupt) · 1 background ter…"
-"  └ checking command policy                                                     "
+"• Running script (0s · ↓ — tokens • esc to interrupt) · checking command policy "
 "                                                                                "
 "                                                                                "
 "› Ask Codex to do anything                                                      "
 "                                                                                "
-"  ▶ Running sleep 2 · 0s · GPT-5.6-Sol default · /tmp/project                   "
+"  ▶ 1 script running · /tasks · sleep 2 · 0s · GPT-5.6-Sol default · /tmp/proje…"
 120 columns:
 "                                                                                                                        "
-"• Running sleep 2 (total 0s · no data 0s • esc to interrupt) · 1 background terminal running · /ps to view · /stop to c…"
-"  └ checking command policy                                                                                             "
+"• Running script (0s · ↓ — tokens • esc to interrupt) · checking command policy                                         "
 "                                                                                                                        "
 "                                                                                                                        "
 "› Ask Codex to do anything                                                                                              "
 "                                                                                                                        "
-"  ▶ Running sleep 2 · 0s · GPT-5.6-Sol default · /tmp/project                                                           "
+"  ▶ 1 script running · /tasks · sleep 2 · 0s · GPT-5.6-Sol default · /tmp/project                                       "

@@ -184,6 +184,13 @@ impl ChatWidget {
         }
 
         let keymap = self.bottom_pane.keymap();
+        if keymap.app.focus_activity.is_pressed(key_event)
+            && self.has_script_tasks()
+            && self.bottom_pane.no_modal_or_popup_active()
+        {
+            self.open_script_tasks();
+            return KeyEventAction::None;
+        }
         if keymap.app.change_host.is_pressed(key_event)
             && self.visible_new_backend_control().is_some()
         {

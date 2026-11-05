@@ -2014,6 +2014,22 @@ impl App {
                     });
                 }
             }
+            AppEvent::RefreshScriptTasks { thread_id, tasks } => {
+                let mut server = app_server.request_view();
+                let frames = tui.frame_requester().clone();
+                tokio::spawn(async move {
+                    tasks.refreshed(server.list_background_terminals(thread_id).await.map_err(|err| err.to_string()));
+                    frames.schedule_frame();
+                });
+            }
+            AppEvent::StopScriptTask { thread_id, item_id, process_id, tasks } => {
+                let mut server = app_server.request_view();
+                let frames = tui.frame_requester().clone();
+                tokio::spawn(async move {
+                    tasks.stopped(&item_id, server.terminate_background_terminal(thread_id, process_id).await.map_err(|err| err.to_string()));
+                    frames.schedule_frame();
+                });
+            }
             AppEvent::BackgroundTerminalsLoaded { request_id, terminals } => {
                 self.chat_widget.restore_background_terminals(request_id, terminals);
             }

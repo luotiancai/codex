@@ -33,17 +33,47 @@ async fn live_activity_hidden_reasoning_updates_phase_without_exposing_text() {
 }
 
 #[tokio::test]
+async fn live_activity_counter_stays_visible_and_increases_during_streaming() {
+    let (mut chat, _events, _ops) = make_chatwidget_manual(None).await;
+    chat.on_task_started();
+    let delta = |text: &str| {
+        ServerNotification::AgentMessageDelta(
+            codex_app_server_protocol::AgentMessageDeltaNotification {
+                thread_id: "thread-1".into(),
+                turn_id: "turn-1".into(),
+                item_id: "reply".into(),
+                delta: text.into(),
+            },
+        )
+    };
+    chat.handle_server_notification(delta("First output\n"), None);
+    chat.on_commit_tick();
+    assert!(row(&mut chat).contains("Responding"));
+    assert!(row(&mut chat).contains("tokens"));
+    let first = chat.live_activity.tokens().unwrap().count;
+    let started_at = chat.live_activity.phase_started_at();
+    chat.handle_server_notification(
+        delta("Additional output that changes the live counter\n"),
+        None,
+    );
+    chat.on_commit_tick();
+    assert!(row(&mut chat).contains("Responding"));
+    assert!(chat.live_activity.tokens().unwrap().count > first);
+    assert_eq!(chat.live_activity.phase_started_at(), started_at);
+}
+
+#[tokio::test]
 async fn live_activity_status_shows_command_then_waiting_and_preserves_retry() {
     let (mut chat, _events, _ops) = make_chatwidget_manual(None).await;
     chat.on_task_started();
     let item = begin_unified_exec_startup(&mut chat, "script", "42", "python3 test.py");
-    assert!(row(&mut chat).contains("Running python3 test.py"));
+    assert!(row(&mut chat).contains("Running script"));
     end_exec(&mut chat, item, "done\n", "", 0);
     assert!(row(&mut chat).contains("Waiting for response"));
     handle_stream_error(&mut chat, "Reconnecting... 2/5", None);
     let retry = row(&mut chat);
     assert!(retry.contains("Reconnecting... 2/5"));
-    assert!(retry.contains("no data"));
+    assert!(retry.contains("tokens"));
     handle_agent_reasoning_started(&mut chat, "reasoning");
     assert!(row(&mut chat).contains("Thinking"));
     chat.on_interrupted_turn(TurnAbortReason::Interrupted);
@@ -56,7 +86,7 @@ async fn live_activity_projected_command_completion_clears_both_surfaces_without
     let (mut chat, _events, _ops) = make_chatwidget_manual(None).await;
     chat.on_task_started();
     let item = begin_unified_exec_startup(&mut chat, "script", "42", "python3 test.py");
-    assert!(row(&mut chat).contains("Running python3 test.py"));
+    assert!(row(&mut chat).contains("Running script"));
     let last_data_at = chat.live_activity.last_data_at;
     chat.handle_command_execution_completed_now(item);
     assert!(row(&mut chat).contains("Waiting for response"));
@@ -91,7 +121,8 @@ async fn live_activity_silent_stream_restores_status_without_animations() {
     chat.live_activity.last_data_at = Some(Instant::now() - Duration::from_secs(30));
     let visible = row(&mut chat);
     assert!(visible.contains("Waiting for response"));
-    assert!(visible.contains("no data 30s"));
+    assert!(visible.contains("tokens"));
+    assert!(!visible.contains("no data"));
     insta::assert_snapshot!("live_activity_waiting_without_data", visible);
 }
 
@@ -109,7 +140,7 @@ async fn live_activity_replay_does_not_refresh_the_data_clock() {
     assert_eq!(chat.live_activity.last_data_at, None);
     let visible = row(&mut chat);
     assert!(visible.contains("Waiting for response"));
-    assert!(visible.contains("no live data yet"));
+    assert!(visible.contains("↓ — tokens"));
 }
 
 #[tokio::test]

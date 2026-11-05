@@ -714,6 +714,15 @@ impl App {
         // paste batching instead of rendering the entire screen before each buffered key.
         // Keys owned by the transcript and non-text keys still need fresh geometry immediately.
         if let TuiEvent::Key(key) = event
+            && self.keymap.app.focus_activity.is_pressed(*key)
+            && self.chat_widget.no_modal_or_popup_active()
+            && self.chat_widget.has_script_tasks()
+        {
+            self.chat_widget.open_script_tasks();
+            tui.frame_requester().schedule_frame();
+            return Ok(true);
+        }
+        if let TuiEvent::Key(key) = event
             && key.kind != KeyEventKind::Release
             && (!self.chat_widget.is_in_paste_burst()
                 || self.transcript_view.is_search_editing()

@@ -1,0 +1,14 @@
+---
+source: tui/src/chatwidget/tests/script_task_manager.rs
+assertion_line: 19
+expression: list
+---
+Background tasks
+
+2 running · 0 finished
+
+› Running · 0s · python3 two.py
+  Running · 0s · python3 one.py
+Refreshing…
+
+↑/↓ select · enter output · k stop · r refresh · esc close

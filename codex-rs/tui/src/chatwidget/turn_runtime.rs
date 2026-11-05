@@ -87,6 +87,10 @@ impl ChatWidget {
 
     pub(super) fn on_task_started(&mut self) {
         self.live_activity = live_activity::LiveActivity::started(Instant::now());
+        if let Some(info) = &self.token_info {
+            self.live_activity
+                .set_usage_baseline(info.total_token_usage.output_tokens);
+        }
         self.status_state.program_status_after_turn =
             crate::terminal_program_status::ProgramStatus::Idle;
         self.bottom_pane.dismiss_composer_sparkle();

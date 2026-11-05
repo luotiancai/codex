@@ -5486,7 +5486,7 @@ async fn running_hooks_fit_around_background_activity_and_finish_without_history
             );
         }
         let rendered = hook_status_frame(&chat, /*width*/ 120);
-        assert!(rendered.contains("1 background terminal running"));
+        assert!(rendered.contains("1 script running · /tasks"));
         assert!(!rendered.contains("Running hooks"));
         assert!(!rendered.contains("checking command policy"));
         assert!(drain_insert_history(&mut rx).is_empty());

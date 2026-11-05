@@ -899,6 +899,16 @@ pub(crate) enum AppEvent {
 
     /// Restore the displayed thread's live terminals after replaying its history.
     RestoreBackgroundTerminals(ThreadId),
+    RefreshScriptTasks {
+        thread_id: ThreadId,
+        tasks: crate::script_tasks::ScriptTasks,
+    },
+    StopScriptTask {
+        thread_id: ThreadId,
+        item_id: String,
+        process_id: String,
+        tasks: crate::script_tasks::ScriptTasks,
+    },
     BackgroundTerminalsLoaded {
         request_id: Uuid,
         terminals: Vec<codex_app_server_protocol::ThreadBackgroundTerminal>,

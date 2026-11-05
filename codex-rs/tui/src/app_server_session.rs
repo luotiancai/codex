@@ -2043,6 +2043,25 @@ impl AppServerSession {
         Ok(())
     }
 
+    pub(crate) async fn terminate_background_terminal(
+        &mut self,
+        thread_id: ThreadId,
+        process_id: String,
+    ) -> Result<bool> {
+        let request_id = self.next_request_id();
+        let response: codex_app_server_protocol::ThreadBackgroundTerminalsTerminateResponse = self
+            .request_handle
+            .request_typed(ClientRequest::ThreadBackgroundTerminalsTerminate {
+                request_id,
+                params: codex_app_server_protocol::ThreadBackgroundTerminalsTerminateParams {
+                    thread_id: thread_id.to_string(),
+                    process_id,
+                },
+            })
+            .await?;
+        Ok(response.terminated)
+    }
+
     pub(crate) async fn review_start(
         &mut self,
         thread_id: ThreadId,
@@ -3033,6 +3052,38 @@ mod tests {
         let first_id = first.next_request_id();
         assert_ne!(session.next_request_id(), first_id);
         assert_ne!(first_id, second.next_request_id());
+    }
+
+    #[tokio::test]
+    async fn script_tasks_terminate_request_preserves_thread_and_process_scope() {
+        let (client, mut commands, _events) = codex_app_server_client::CloudClient::channel(1);
+        let mut session = AppServerSession::new(
+            crate::backend_id::BackendId::new(),
+            AppServerClient::Cloud(client),
+            ThreadParamsMode::Cloud,
+        );
+        let thread_id = ThreadId::new();
+        let (result, ()) = tokio::join!(
+            session.terminate_background_terminal(thread_id, "42".into()),
+            async {
+                let command = commands.recv().await.expect("targeted terminate request");
+                let codex_app_server_client::CloudOperation::Request(request) = command.operation
+                else {
+                    panic!("expected request")
+                };
+                let ClientRequest::ThreadBackgroundTerminalsTerminate { params, .. } = *request
+                else {
+                    panic!("expected terminate, not clean-all or interrupt")
+                };
+                assert_eq!(params.thread_id, thread_id.to_string());
+                assert_eq!(params.process_id, "42");
+                command
+                    .response
+                    .send(Ok(Ok(serde_json::json!({"terminated": true}))))
+                    .expect("reply receiver");
+            }
+        );
+        assert!(result.unwrap());
     }
 
     #[tokio::test]

@@ -203,6 +203,8 @@ impl ChatWidget {
 
     fn refresh_status_line_from_selections(&mut self, selections: &StatusSurfaceSelections) {
         let enabled = !selections.status_line_items.is_empty();
+        self.bottom_pane
+            .set_script_tasks_in_footer(enabled && !self.footer_command_status.is_empty());
         self.bottom_pane.set_status_line_enabled(enabled);
         if !enabled {
             self.set_status_line(/*status_line*/ None);
@@ -263,6 +265,29 @@ impl ChatWidget {
 
     /// Tick independently of output and animations, including idle background jobs.
     pub(super) fn refresh_footer_command_status(&mut self) {
+        let finished: HashSet<_> = self
+            .footer_command_status
+            .tasks
+            .snapshot()
+            .0
+            .into_iter()
+            .filter(|task| !task.status.is_running())
+            .map(|task| task.id)
+            .collect();
+        let before = self.unified_exec_processes.len();
+        for id in &finished {
+            self.live_activity.finish_tool(id);
+        }
+        self.unified_exec_processes
+            .retain(|process| !finished.contains(&process.call_id));
+        if self.unified_exec_processes.len() != before {
+            self.bottom_pane.set_unified_exec_processes(
+                self.unified_exec_processes
+                    .iter()
+                    .map(|process| process.command_display.clone())
+                    .collect(),
+            );
+        }
         let selections = self.status_surface_selections();
         self.refresh_status_line_from_selections(&selections);
         if !selections.status_line_items.is_empty() && !self.footer_command_status.is_empty() {

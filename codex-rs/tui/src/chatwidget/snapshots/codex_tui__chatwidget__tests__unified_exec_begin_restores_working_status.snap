@@ -4,9 +4,9 @@ assertion_line: 509
 expression: normalized_backend_snapshot(terminal.backend())
 ---
 "                                                                                "
-"• Working (0s • esc to interrupt) · 1 background terminal running · /ps to view…"
+"• Working (0s • esc to interrupt)                                               "
 "                                                                                "
 "                                                                                "
 "› Ask Codex to do anything                                                      "
 "                                                                                "
-"  ▶ Running sleep 2 · 0s · GPT-5.6-Sol default · /tmp/project                   "
+"  ▶ 1 script running · /tasks · sleep 2 · 0s · GPT-5.6-Sol default · /tmp/proje…"

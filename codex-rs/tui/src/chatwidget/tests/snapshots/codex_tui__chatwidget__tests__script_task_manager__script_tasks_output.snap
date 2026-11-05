@@ -1,0 +1,15 @@
+---
+source: tui/src/chatwidget/tests/script_task_manager.rs
+assertion_line: 26
+expression: output
+---
+Task output
+
+Running · 0s
+
+$ python3 one.py
+
+step 1
+step 2
+
+↑/↓ scroll · end follow · k stop · esc back

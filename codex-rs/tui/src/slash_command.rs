@@ -75,6 +75,7 @@ pub enum SlashCommand {
     Feedback,
     Rollout,
     Ps,
+    Tasks,
     #[strum(to_string = "stop", serialize = "clean")]
     Stop,
     Clear,
@@ -92,6 +93,7 @@ impl SlashCommand {
     /// User-visible description shown in the popup.
     pub fn description(self) -> &'static str {
         match self {
+            SlashCommand::Tasks => "view shell tasks, follow output, or stop one task",
             SlashCommand::Config => "configure Codex preferences",
             SlashCommand::Feedback => "send logs to maintainers",
             SlashCommand::New => "start a new chat during a conversation",
@@ -212,6 +214,7 @@ impl SlashCommand {
                 | SlashCommand::Status
                 | SlashCommand::Daemon
                 | SlashCommand::Warnings
+                | SlashCommand::Tasks
                 | SlashCommand::Pwd
                 | SlashCommand::Usage
                 | SlashCommand::Ide
@@ -290,6 +293,7 @@ impl SlashCommand {
             | SlashCommand::Usage
             | SlashCommand::DebugConfig
             | SlashCommand::Ps
+            | SlashCommand::Tasks
             | SlashCommand::Stop
             | SlashCommand::App
             | SlashCommand::Goal
@@ -357,6 +361,8 @@ mod tests {
 
     #[test]
     fn certain_commands_are_available_during_task() {
+        assert!(SlashCommand::Tasks.available_during_task());
+        assert!(SlashCommand::Tasks.available_in_side_conversation());
         assert!(SlashCommand::Goal.available_during_task());
         assert!(SlashCommand::Ide.available_during_task());
         assert!(SlashCommand::Title.available_during_task());

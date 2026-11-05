@@ -6,8 +6,7 @@ expression: "format!(\"{first_running_snapshot}\\n\\n{second_running_snapshot}\\
 pre running
 activity:
 "                                                                                "
-"• Running hook (total 0s · no data 0s • esc to interrupt)                       "
-"  └ checking command policy                                                     "
+"• Running hook (0s · ↓ — tokens • esc to interrupt) · checking command policy   "
 "                                                                                "
 "                                                                                "
 "› Ask Codex to do anything                                                      "
@@ -19,7 +18,7 @@ history:
 post running
 activity:
 "                                                                                "
-"• Running hook (total 0s · no data 0s • esc to interrupt) · Running hooks       "
+"• Running hook (0s · ↓ — tokens • esc to interrupt) · Running hooks             "
 "                                                                                "
 "                                                                                "
 "› Ask Codex to do anything                                                      "
@@ -31,8 +30,7 @@ history:
 pre completed
 activity:
 "                                                                                "
-"• Running hook (total 0s · no data 0s • esc to interrupt)                       "
-"  └ checking output policy                                                      "
+"• Running hook (0s · ↓ — tokens • esc to interrupt) · checking output policy    "
 "                                                                                "
 "                                                                                "
 "› Ask Codex to do anything                                                      "
@@ -44,7 +42,7 @@ history:
 all completed
 activity:
 "                                                                                "
-"• Waiting for response (total 0s · no data 0s • esc to interrupt)               "
+"• Waiting for response (0s · ↓ — tokens • esc to interrupt)                     "
 "                                                                                "
 "                                                                                "
 "› Ask Codex to do anything                                                      "

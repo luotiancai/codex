@@ -592,6 +592,9 @@ impl ChatWidget {
             SlashCommand::Ps => {
                 self.add_ps_output();
             }
+            SlashCommand::Tasks => {
+                self.open_script_tasks();
+            }
             SlashCommand::Stop => {
                 self.clean_background_terminals();
             }
@@ -1296,6 +1299,7 @@ impl ChatWidget {
             | SlashCommand::Usage
             | SlashCommand::DebugConfig
             | SlashCommand::Ps
+            | SlashCommand::Tasks
             | SlashCommand::Stop
             | SlashCommand::MemoryDrop
             | SlashCommand::MemoryUpdate

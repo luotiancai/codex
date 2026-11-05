@@ -23,9 +23,9 @@
 //! `update_task_running_state`.
 //!
 //! For preamble-capable models, assistant output may include commentary before
-//! the final answer. During streaming we hide the status row to avoid duplicate
-//! progress indicators; once commentary completes and stream queues drain, we
-//! re-show it so users still see turn-in-progress state between output bursts.
+//! the final answer. Streaming commits can clear the status widget, but the
+//! pre-draw activity sync restores the phase/tokens row during an active turn,
+//! including while output is streaming.
 //!
 //! Slash-command parsing lives in the bottom-pane composer, but slash-command acceptance lives
 //! here. That split lets the composer stage a recall entry before clearing input while this module
@@ -1219,7 +1219,7 @@ impl ChatWidget {
         }
         self.refresh_status_line_if_workspace_headline_due();
         self.sync_live_activity();
-        if !self.footer_command_status.is_empty() {
+        if !self.footer_command_status.is_empty() || self.footer_command_status.needs_refresh() {
             self.refresh_footer_command_status();
         }
         self.refresh_thread_usage_if_settlement_due();
@@ -1532,6 +1532,30 @@ impl ChatWidget {
             })
             .collect();
         self.add_to_history(history_cell::new_unified_exec_processes_output(processes));
+    }
+
+    pub(crate) fn has_script_tasks(&self) -> bool {
+        !self.footer_command_status.tasks.snapshot().0.is_empty()
+    }
+
+    pub(crate) fn open_script_tasks(&mut self) {
+        let tasks = self.footer_command_status.tasks.clone();
+        if let Some(thread_id) = self.thread_id
+            && tasks.begin_refresh()
+        {
+            self.app_event_tx.send(AppEvent::RefreshScriptTasks {
+                thread_id,
+                tasks: tasks.clone(),
+            });
+        }
+        let view = crate::bottom_pane::script_tasks_view::ScriptTasksView::new(
+            tasks,
+            self.thread_id,
+            self.app_event_tx.clone(),
+            self.bottom_pane.list_keymap(),
+        );
+        self.bottom_pane.show_view(Box::new(view));
+        self.request_redraw();
     }
 
     fn clean_background_terminals(&mut self) {

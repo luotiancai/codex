@@ -1,6 +1,6 @@
 ---
 source: tui/src/status_indicator_widget.rs
-assertion_line: 451
+assertion_line: 468
 expression: visible.trim_end()
 ---
-Running python3 long_script_namelon… (total 0s · no data 30s • esc to interrupt)
+Running python3 long_script_namelong_… (30s · ↓ ~1234 tokens • esc to interrupt)

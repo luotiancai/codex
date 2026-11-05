@@ -38,6 +38,9 @@ impl ChatWidget {
         if !render_source.is_replay() && *source != ExecCommandSource::UnifiedExecInteraction {
             self.footer_command_status
                 .start(id, command, Some(Instant::now()));
+            self.footer_command_status
+                .tasks
+                .bind_process(id, process_id.as_deref());
             self.refresh_footer_command_status();
         }
         self.flush_answer_stream_with_separator();
@@ -62,6 +65,7 @@ impl ChatWidget {
     }
 
     pub(super) fn on_exec_command_output_delta(&mut self, call_id: &str, delta: &str) {
+        self.footer_command_status.tasks.output(call_id, delta);
         self.track_unified_exec_output_chunk(call_id, delta.as_bytes());
         if !self.bottom_pane.is_task_running() {
             return;
@@ -146,12 +150,16 @@ impl ChatWidget {
             id,
             process_id,
             source,
+            exit_code,
+            aggregated_output,
             ..
         } = &item
         else {
             return;
         };
-        self.footer_command_status.finish(id);
+        self.footer_command_status
+            .tasks
+            .finish(id, *exit_code, aggregated_output.as_deref());
         self.refresh_footer_command_status();
         if is_unified_exec_source(*source) {
             if let Some(process_id) = process_id.as_deref()
@@ -240,6 +248,9 @@ impl ChatWidget {
             {
                 self.footer_command_status
                     .start(&terminal.item_id, &terminal.command, None);
+                self.footer_command_status
+                    .tasks
+                    .bind_process(&terminal.item_id, Some(&terminal.process_id));
                 self.unified_exec_processes.push(UnifiedExecProcessSummary {
                     key: terminal.process_id,
                     call_id: terminal.item_id,
@@ -418,7 +429,9 @@ impl ChatWidget {
         else {
             return;
         };
-        self.footer_command_status.finish(&id);
+        self.footer_command_status
+            .tasks
+            .finish(&id, exit_code, aggregated_output.as_deref());
         self.live_activity.finish_tool(&id);
         self.refresh_footer_command_status();
         let event_command = split_command_string(&command);

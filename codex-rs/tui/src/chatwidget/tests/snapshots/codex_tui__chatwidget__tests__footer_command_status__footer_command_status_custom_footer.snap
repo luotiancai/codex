@@ -3,9 +3,9 @@ source: tui/src/chatwidget/tests/footer_command_status.rs
 assertion_line: 30
 expression: rendered
 ---
-• Running python3 test.py (total 0s · no data 0s • esc to interrupt) · 1 background terminal runnin…
+• Running script (0s · ↓ — tokens • esc to interrupt)
 
 
 › Ask Codex to do anything
 
-  ▶ Running python3 test.py · 0s · GPT-5.6-Sol
+  ▶ 1 script running · /tasks · python3 test.py · 0s · GPT-5.6-Sol

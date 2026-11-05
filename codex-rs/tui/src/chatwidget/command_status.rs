@@ -3,6 +3,7 @@
 //! Shell scripts classified as unknown commands still belong here. Replayed history
 //! does not; restored background terminals are added only after a live process query.
 
+use std::cell::Cell;
 use std::time::Instant;
 
 use crate::exec_command::split_command_string;
@@ -11,21 +12,16 @@ use crate::live_wrap::take_prefix_by_width;
 
 #[derive(Default)]
 pub(super) struct FooterCommandStatus {
-    commands: Vec<Command>,
-}
-
-struct Command {
-    id: String,
-    display: String,
-    started_at: Option<Instant>,
+    pub(super) tasks: crate::script_tasks::ScriptTasks,
+    rendered_revision: Cell<u64>,
 }
 
 impl FooterCommandStatus {
     pub(super) fn start(&mut self, id: &str, command: &str, started_at: Option<Instant>) {
-        if let Some(existing) = self.commands.iter_mut().find(|command| command.id == id) {
-            existing.started_at = existing.started_at.or(started_at);
-            return;
-        }
+        self.tasks.start(id, command, started_at);
+    }
+
+    fn display(command: &str) -> String {
         let display = strip_bash_lc_and_escape(&split_command_string(command));
         let display = display.split_whitespace().collect::<Vec<_>>().join(" ");
         let display: String = display.chars().filter(|ch| !ch.is_control()).collect();
@@ -33,35 +29,56 @@ impl FooterCommandStatus {
         if !rest.is_empty() {
             display.push('…');
         }
-        self.commands.push(Command {
-            id: id.to_owned(),
-            display,
-            started_at,
-        });
+        display
     }
 
+    #[cfg(test)]
     pub(super) fn finish(&mut self, id: &str) {
-        self.retain(|command_id| command_id != id);
+        self.tasks.finish(id, None, None);
     }
 
     pub(super) fn retain(&mut self, mut keep: impl FnMut(&str) -> bool) {
-        self.commands.retain(|command| keep(&command.id));
+        self.tasks.retain_running(|id| keep(id));
     }
 
     pub(super) fn is_empty(&self) -> bool {
-        self.commands.is_empty()
+        !self
+            .tasks
+            .snapshot()
+            .0
+            .iter()
+            .any(|task| task.status.is_running())
     }
 
-    pub(super) fn running_header(&self) -> Option<String> {
-        self.commands
-            .last()
-            .map(|command| format!("Running {}", command.display))
+    pub(super) fn needs_refresh(&self) -> bool {
+        self.rendered_revision.get() != self.tasks.revision()
     }
 
     pub(super) fn summary(&self, now: Instant, background: bool) -> Option<String> {
-        let command = self.commands.last()?;
-        let label = if background { "Background" } else { "Running" };
-        let mut text = format!("▶ {label} {}", command.display);
+        self.rendered_revision.set(self.tasks.revision());
+        let commands: Vec<_> = self
+            .tasks
+            .snapshot()
+            .0
+            .into_iter()
+            .filter(|task| task.status.is_running())
+            .collect();
+        let command = commands.first()?;
+        let noun = if commands.len() == 1 {
+            "script"
+        } else {
+            "scripts"
+        };
+        let label = if background {
+            format!("background {noun}")
+        } else {
+            format!("{noun} running")
+        };
+        let mut text = format!(
+            "▶ {} {label} · /tasks · {}",
+            commands.len(),
+            Self::display(&command.command)
+        );
         if let Some(started_at) = command.started_at {
             let seconds = now.saturating_duration_since(started_at).as_secs();
             if seconds < 60 {
@@ -69,9 +86,6 @@ impl FooterCommandStatus {
             } else {
                 text.push_str(&format!(" · {}m {:02}s", seconds / 60, seconds % 60));
             }
-        }
-        if self.commands.len() > 1 {
-            text.push_str(&format!(" · {} commands", self.commands.len()));
         }
         Some(text)
     }
@@ -95,17 +109,17 @@ mod tests {
         );
         assert_eq!(
             status.summary(now + Duration::from_secs(12), false),
-            Some("▶ Running python3 test.py · 12s".into())
+            Some("▶ 1 script running · /tasks · python3 test.py · 12s".into())
         );
         status.start("two", "npm test", Some(now + Duration::from_secs(10)));
         assert_eq!(
             status.summary(now + Duration::from_secs(12), false),
-            Some("▶ Running npm test · 2s · 2 commands".into())
+            Some("▶ 2 scripts running · /tasks · npm test · 2s".into())
         );
         status.finish("two");
         assert_eq!(
             status.summary(now + Duration::from_secs(65), true),
-            Some("▶ Background python3 test.py · 1m 05s".into())
+            Some("▶ 1 background script · /tasks · python3 test.py · 1m 05s".into())
         );
         status.finish("one");
         assert_eq!(status.summary(now, false), None);
@@ -117,7 +131,7 @@ mod tests {
         status.start("restored", "sleep 100", None);
         assert_eq!(
             status.summary(Instant::now(), true),
-            Some("▶ Background sleep 100".into())
+            Some("▶ 1 background script · /tasks · sleep 100".into())
         );
     }
 
@@ -130,10 +144,10 @@ mod tests {
             None,
         );
         let summary = status.summary(Instant::now(), false).expect("live command");
-        assert!(summary.starts_with("▶ Running python3 "));
+        assert!(summary.starts_with("▶ 1 script running · /tasks · python3 "));
         assert!(summary.contains("脚本"));
         assert!(summary.ends_with('…'));
         assert!(!summary.chars().any(char::is_control));
-        assert!(unicode_width::UnicodeWidthStr::width(summary.as_str()) <= 59);
+        assert!(unicode_width::UnicodeWidthStr::width(summary.as_str()) <= 84);
     }
 }

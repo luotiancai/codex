@@ -26,33 +26,32 @@ impl ChatWidget {
             if activity != "Running command" && activity != "Waiting for response" {
                 return activity;
             }
-            self.footer_command_status
-                .running_header()
-                .unwrap_or_else(|| {
-                    if self
-                        .active_hook_cell
-                        .as_ref()
-                        .and_then(HookCell::running_status_summary)
-                        .is_some()
-                    {
-                        "Running hook".into()
-                    } else {
-                        activity
-                    }
-                })
+            if !self.footer_command_status.is_empty() {
+                "Running script".into()
+            } else {
+                if self
+                    .active_hook_cell
+                    .as_ref()
+                    .and_then(HookCell::running_status_summary)
+                    .is_some()
+                {
+                    "Running hook".into()
+                } else {
+                    activity
+                }
+            }
         });
-        // A silent answer stream must not hide the waiting indicator indefinitely.
-        if self
-            .live_activity
-            .last_data_at
-            .is_none_or(|at| now.saturating_duration_since(at) >= Duration::from_secs(5))
-        {
-            self.bottom_pane.ensure_status_indicator();
-        }
+        // Keep the live counter visible while output commits temporarily clear the widget.
+        self.bottom_pane.ensure_status_indicator();
         self.bottom_pane.set_live_activity(Some(
             crate::status_indicator_widget::LiveActivityStatus {
                 header,
-                last_data_at: self.live_activity.last_data_at,
+                phase_started_at: if preserve_header {
+                    None
+                } else {
+                    self.live_activity.phase_started_at()
+                },
+                tokens: self.live_activity.tokens(),
             },
         ));
         self.frame_requester

@@ -15,7 +15,7 @@ exec and hook running:
 "                                                                                "
 "› Ask Codex to do anything                                                      "
 "                                                                                "
-"  ▶ Background echo done · 0s · GPT-5.6-Sol default · /tmp/project              "
+"  ▶ 1 background script · /tasks · echo done · 0s · GPT-5.6-Sol default · /tmp/…"
 history after exec:
 • Ran echo done
   └ done

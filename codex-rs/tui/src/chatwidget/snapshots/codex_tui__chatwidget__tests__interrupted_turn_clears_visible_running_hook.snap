@@ -5,8 +5,7 @@ expression: "format!(\"before interrupt:\\n{before_interrupt}\\nafter interrupt:
 ---
 before interrupt:
 "                                                                                "
-"• Running hook (total 0s · no data 0s • esc to interrupt)                       "
-"  └ checking command policy                                                     "
+"• Running hook (0s · ↓ — tokens • esc to interrupt) · checking command policy   "
 "                                                                                "
 "                                                                                "
 "› Ask Codex to do anything                                                      "

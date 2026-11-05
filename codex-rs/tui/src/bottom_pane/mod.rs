@@ -92,6 +92,7 @@ pub(crate) use multi_select_picker::MultiSelectPicker;
 mod question_tests;
 mod questions;
 mod request_user_input;
+pub(crate) mod script_tasks_view;
 pub(crate) mod status_line_content;
 mod status_line_setup;
 mod status_line_style;
@@ -338,6 +339,7 @@ pub(crate) struct BottomPane {
     /// When a status row exists, this summary is mirrored inline in that row;
     /// when no status row exists, it renders as its own footer row.
     unified_exec_footer: UnifiedExecFooter,
+    script_tasks_in_footer: bool,
     /// Preview of pending steers and queued drafts shown above the composer.
     pending_input_preview: PendingInputPreview,
     /// Inactive threads with pending approval requests.
@@ -426,6 +428,7 @@ impl BottomPane {
             inline_banner: None,
             status_timer: crate::status_indicator_widget::StatusTimer::default(),
             unified_exec_footer: UnifiedExecFooter::new(),
+            script_tasks_in_footer: false,
             pending_input_preview: PendingInputPreview::new(),
             pending_thread_approvals: PendingThreadApprovals::new(),
             esc_backtrack_hint: false,
@@ -1804,6 +1807,14 @@ impl BottomPane {
         }
     }
 
+    pub(crate) fn set_script_tasks_in_footer(&mut self, visible: bool) {
+        if self.script_tasks_in_footer != visible {
+            self.script_tasks_in_footer = visible;
+            self.sync_status_inline_message();
+            self.request_redraw();
+        }
+    }
+
     /// Update hook activity after the lifecycle reveal delay, even outside a turn.
     pub(crate) fn set_hook_status_message(&mut self, message: Option<String>) {
         if self.hook_status_message == message {
@@ -1825,7 +1836,11 @@ impl BottomPane {
     /// standalone unified-exec footer row to be visible.
     fn sync_status_inline_message(&mut self) {
         if let Some(status) = self.status.as_mut() {
-            status.update_inline_message(self.unified_exec_footer.summary_text());
+            status.update_inline_message(if self.script_tasks_in_footer {
+                None
+            } else {
+                self.unified_exec_footer.summary_text()
+            });
             status.update_hook_status_message(self.hook_status_message.clone());
         }
     }
@@ -2493,7 +2508,10 @@ impl BottomPane {
             }
             // Avoid double-surfacing the same summary and avoid adding an extra
             // row while the status line is already visible.
-            if self.status_widget().is_none() && !self.unified_exec_footer.is_empty() {
+            if self.status_widget().is_none()
+                && !self.script_tasks_in_footer
+                && !self.unified_exec_footer.is_empty()
+            {
                 flex.push(
                     /*flex*/ 0,
                     RenderableItem::Borrowed(&self.unified_exec_footer),
@@ -2510,7 +2528,7 @@ impl BottomPane {
                 || !self.pending_input_preview.rejected_steers.is_empty();
             let has_status_or_footer = self.status_widget().is_some()
                 || self.hook_status_message.is_some()
-                || !self.unified_exec_footer.is_empty();
+                || (!self.script_tasks_in_footer && !self.unified_exec_footer.is_empty());
             let has_inline_previews = has_pending_thread_approvals || has_pending_input;
             if !has_inline_previews
                 && self.status_widget().is_some()
@@ -3713,7 +3731,7 @@ mod tests {
 
         let area = Rect::new(0, 0, width, after);
         let rendered = render_snapshot(&pane, area);
-        assert!(rendered.contains("background terminal running · /ps to view"));
+        assert!(rendered.contains("background terminal running · /tasks to manage"));
     }
 
     #[test]

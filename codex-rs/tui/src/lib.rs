@@ -202,6 +202,7 @@ mod resize_reflow_cap;
 mod resume_permissions;
 mod resume_picker;
 mod screen_reader;
+mod script_tasks;
 mod service_tier_resolution;
 mod session_archive_commands;
 mod session_lock;
