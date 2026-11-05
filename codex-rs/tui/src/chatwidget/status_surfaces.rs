@@ -248,6 +248,9 @@ impl ChatWidget {
 
     /// A parked pane retains a static footer; do not freeze a live command into it.
     pub(super) fn inactive_status_line_text(&mut self) -> Option<String> {
+        if self.footer_command_status.is_empty() {
+            return self.status_line_text();
+        }
         let selections = self.status_surface_selections();
         let text = self
             .status_line_segments(&selections, None)
